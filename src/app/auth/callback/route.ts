@@ -7,6 +7,7 @@ export async function GET(request: Request) {
   const code = searchParams.get('code')
   const error = searchParams.get('error')
   const errorDescription = searchParams.get('error_description')
+  const next = searchParams.get('next') ?? '/dashboard'
 
   // Handle errors from Supabase (e.g. expired link)
   if (error) {
@@ -16,19 +17,19 @@ export async function GET(request: Request) {
     )
   }
 
-  // Exchange code for session (PKCE flow)
+  // Exchange code for session (PKCE flow — email confirmation + Google OAuth)
   if (code) {
     const supabase = createClient()
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
     if (exchangeError) {
+      console.error('Exchange error:', exchangeError.message)
       return NextResponse.redirect(
         `${origin}/auth?error=${encodeURIComponent(exchangeError.message)}`
       )
     }
-    // Success — go to dashboard
-    return NextResponse.redirect(`${origin}/dashboard`)
+    return NextResponse.redirect(`${origin}${next}`)
   }
 
-  // No code and no error — just go to auth
+  // No code — redirect to auth
   return NextResponse.redirect(`${origin}/auth`)
 }
