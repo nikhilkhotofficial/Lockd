@@ -3,18 +3,20 @@ import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
+
   const code = searchParams.get('code')
   const error = searchParams.get('error')
-  const errorCode = searchParams.get('error_code')
+  const errorDescription = searchParams.get('error_description')
 
-  // Handle errors (e.g. expired OTP link)
-  if (error || errorCode) {
-    const errorDescription = searchParams.get('error_description') ?? 'Authentication failed'
+  // Handle errors from Supabase (e.g. expired link)
+  if (error) {
+    const message = errorDescription ?? error
     return NextResponse.redirect(
-      `${origin}/auth?error=${encodeURIComponent(errorDescription)}`
+      `${origin}/auth?error=${encodeURIComponent(message)}`
     )
   }
 
+  // Exchange code for session (PKCE flow)
   if (code) {
     const supabase = createClient()
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
@@ -23,7 +25,10 @@ export async function GET(request: Request) {
         `${origin}/auth?error=${encodeURIComponent(exchangeError.message)}`
       )
     }
+    // Success — go to dashboard
+    return NextResponse.redirect(`${origin}/dashboard`)
   }
 
-  return NextResponse.redirect(`${origin}/dashboard`)
+  // No code and no error — just go to auth
+  return NextResponse.redirect(`${origin}/auth`)
 }
