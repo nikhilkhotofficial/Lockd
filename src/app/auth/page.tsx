@@ -33,22 +33,33 @@ function AuthForm() {
     setSuccess('')
 
     if (mode === 'signup') {
-      const { error } = await supabase.auth.signUp({
-        email, password,
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
         options: { data: { display_name: name } }
       })
-      if (error) setError(error.message)
-      else {
-        // Auto login after signup since email confirmation is off
-        const { error: loginError } = await supabase.auth.signInWithPassword({ email, password })
-        if (loginError) setSuccess('Account created! Please log in.')
-        else router.push('/dashboard')
+      if (error) {
+        setError(error.message)
+        setLoading(false)
+        return
       }
+      if (data.session) {
+        router.push('/dashboard')
+        router.refresh()
+        return
+      }
+      setSuccess('Account created! Check your email to confirm, then log in.')
+      setLoading(false)
 
     } else if (mode === 'login') {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setError(error.message)
-      else router.push('/dashboard')
+      if (error) {
+        setError(error.message)
+        setLoading(false)
+        return
+      }
+      router.push('/dashboard')
+      router.refresh()
 
     } else if (mode === 'forgot') {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -56,14 +67,14 @@ function AuthForm() {
       })
       if (error) setError(error.message)
       else setSuccess('Password reset link sent! Check your email.')
+      setLoading(false)
 
     } else if (mode === 'otp') {
       const { error } = await supabase.auth.signInWithOtp({ email })
       if (error) setError(error.message)
       else setSuccess('OTP sent to your email!')
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   async function verifyOtp(e: React.FormEvent) {
@@ -75,9 +86,13 @@ function AuthForm() {
       token: otp,
       type: 'email'
     })
-    if (error) setError(error.message)
-    else router.push('/dashboard')
-    setLoading(false)
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+      return
+    }
+    router.push('/dashboard')
+    router.refresh()
   }
 
   async function handleGoogle() {
@@ -95,8 +110,10 @@ function AuthForm() {
           }
         }
       })
-      if (error) { setError(error.message); setGoogleLoading(false) }
-      // Don't reset loading — page will redirect on success
+      if (error) {
+        setError(error.message)
+        setGoogleLoading(false)
+      }
     } catch {
       setError('Google sign in failed. Please try again.')
       setGoogleLoading(false)
