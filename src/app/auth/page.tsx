@@ -38,7 +38,12 @@ function AuthForm() {
         options: { data: { display_name: name } }
       })
       if (error) setError(error.message)
-      else setSuccess('Check your email to confirm your account, then log in.')
+      else {
+        // Auto login after signup since email confirmation is off
+        const { error: loginError } = await supabase.auth.signInWithPassword({ email, password })
+        if (loginError) setSuccess('Account created! Please log in.')
+        else router.push('/dashboard')
+      }
 
     } else if (mode === 'login') {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -84,6 +89,10 @@ function AuthForm() {
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
           skipBrowserRedirect: false,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
       })
       if (error) { setError(error.message); setGoogleLoading(false) }
